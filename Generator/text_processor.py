@@ -1,4 +1,7 @@
 import os
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+import re
 
 
 def process(data_path):
@@ -26,15 +29,15 @@ def process(data_path):
     employees = os.listdir(data_path)
 
     for e in employees:
-        folders = os.listdir(data_path + "/" + e)
-        for f in folders[0:2]:
-            if f == "sent_items":
-                emails = os.listdir(data_path + "/" + e + "/" + f)
-                for email in emails[0:2]:
-                    email_location = data_path + "/" + e + "/" + f + "/" + email
+        folders = os.listdir(data_path + '/' + e)
+        for f in folders:
+            if f == 'sent_items':
+                emails = os.listdir(data_path + '/' + e + '/' + f)
+                for email in emails:
+                    email_location = data_path + '/' + e + '/' + f + '/' + email
                     if os.path.isfile(email_location):
                         extracted = extract_metadata(email_location)
-                        if 'body' in extracted and len(extracted["body"].strip()):
+                        if 'body' in extracted and len(extracted['body']):
                             email_metadata.append(extracted)
 
     return email_metadata
@@ -61,12 +64,34 @@ def extract_metadata(file_name):
             row = row.lstrip('> \t')
             for (pattern, prop) in rules:
                 if row.startswith(pattern):
-                    metadata[prop] = row.replace(pattern, "")
+                    metadata[prop] = row.replace(pattern,'')
 
-            if "body" not in metadata:
-                if row.startswith("\n"):
-                    metadata["body"] = "\n".join(rows[index:])
-            elif "-----Original Message-----" in row:
-                del metadata["body"]
+            if 'body' not in metadata:
+                if row.startswith('\n'):
+                    metadata['body'] = '\n'.join(rows[index:])
 
+            elif '-----Original Message-----' in row:
+                del metadata['body']
+
+        if 'body' in metadata:
+            metadata['body'] = clean_text(metadata['body'])
         return metadata
+
+
+def clean_text(text_body):
+
+    # Remove punctuation, quotation marks, etc.
+    # From: https://towardsdatascience.com/sentiment-analysis-with-python-part-1-5ce197074184
+    replace_no_space = re.compile('(\.)|(;)|(:)|(!)|(\')|(\?)|(,)|(\")|(\()|(\))|(\[)|(])|(>)|(<)')
+    replace_with_space = re.compile('(-)|(/)')
+    text_body = replace_no_space.sub("", text_body)
+    text_body = replace_with_space.sub(" ", text_body)
+
+    # Tokenize the text
+    tokens = word_tokenize(text_body)
+
+    # Remove stop words: a, the, is, etc.
+    english_stop_words = stopwords.words('english')
+    cleaned_tokens = [t for t in tokens if t not in english_stop_words]
+
+    return cleaned_tokens
