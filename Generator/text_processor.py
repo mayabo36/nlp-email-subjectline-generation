@@ -94,4 +94,4 @@ def clean_text(text_body):
     english_stop_words = stopwords.words('english')
     cleaned_tokens = [t for t in tokens if t not in english_stop_words]
 
-    return cleaned_tokens
+    return " ".join(cleaned_tokens)
