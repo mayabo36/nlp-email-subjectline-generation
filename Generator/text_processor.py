@@ -2,6 +2,7 @@ import os
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import re
+from datetime import datetime
 
 
 def process(data_path):
@@ -28,7 +29,7 @@ def process(data_path):
     email_metadata = []
     employees = os.listdir(data_path)
 
-    for e in employees:
+    for e in employees[0:50]:
         folders = os.listdir(data_path + '/' + e)
         for f in folders:
             if f == 'sent_items':
@@ -74,7 +75,10 @@ def extract_metadata(file_name):
                 del metadata['body']
 
         if 'body' in metadata:
+            metadata['original_body'] = metadata['body']
             metadata['body'] = clean_text(metadata['body'])
+            metadata['label'] = create_label(metadata['body'])
+
         return metadata
 
 
@@ -95,3 +99,32 @@ def clean_text(text_body):
     cleaned_tokens = [t for t in tokens if t not in english_stop_words]
 
     return " ".join(cleaned_tokens)
+
+
+def create_label(text_body):
+    labels = [
+        ('Please see the attached', ['attachment', 'attached', 'attaching', 'please see', 'look at', 'take a look at',
+                                     'enclosed', '.xls>>', '.xls >>', '.xls  >>', '.doc>>', '.doc >>', '.doc  >>',
+                                     '.docx>>', '.docx >>', '.docx  >>', '.pdf>>', '.pdf >>', '.pdf  >>']),
+        ('<Entity> Announcement/Update/Feedback', ['feedback', 'update', 'memo', 'announcement', 'by the way', 'btw',
+                                                   'now', 'urgent', 'note']),
+        ('<Entity> Report/Information/Summary', ['info', 'summary', 'report', 'summarize', ]),
+        ('<Entity> Request/Approval/Review', ['review', 'approval', 'needs', 'need', 'request', 'would like',
+                                              'let me know', 'lmk']),
+        ('<Entity> Confirmation', ['confirm', 'i will', 'verify', 'can do']),
+        ('<Entity> Question', ['what is', 'what are', 'what else', 'why', 'how', 'when', 'is there']),
+        ('Favor to ask you', ['favor', 'can you', 'would you', 'please']),
+        ('<Entity> Suggestion/Recommendation', ['suggestion', 'recommendation']),
+        ('<Entity> Meeting', ['meeting', 'schedule', 'meet']),
+        ('<Entity> Proposal', ['proposal']),
+        ('Out of office',
+         ['out of office', 'ooo', 'on holiday', 'on vacation', 'not be in the office', 'not be in office',
+          'n\'t be in office', 'n\'t be in the office', 'not in office']),
+        ('Thank You', ['thanks,', 'thank you']),
+        ('Other/<Entity>', ['']),
+    ]
+    message = text_body.lower()
+    for (index, (label, rules)) in enumerate(labels):
+        for rule in rules:
+            if rule in message:
+                return index
