@@ -24,7 +24,7 @@ subject_line_labels = [
 data_path = sys.argv[1]
 
 # Process the email dataset to clean, tokenize, and remove stop words (overly common words) from the email body
-data = text_processor.process(data_path)
+data = text_processor.process(data_path, 'word')
 
 # Create the n-grams
 ngram_vectorizer = CountVectorizer(binary=True, ngram_range=(1, 2))
