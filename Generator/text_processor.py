@@ -3,8 +3,9 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
 import re
 
-
-def process(data_path, token_type):
+# Token types: sentence, word, or none
+# Create_labels and remove_stop_words are booleanss
+def process(data_path, token_type, create_labels, remove_stop_words):
     """
     Takes a data_path and assumes data is structured as:
 
@@ -36,14 +37,14 @@ def process(data_path, token_type):
                 for email in emails:
                     email_location = data_path + '/' + e + '/' + f + '/' + email
                     if os.path.isfile(email_location):
-                        extracted = extract_metadata(email_location, token_type)
+                        extracted = extract_metadata(email_location, token_type, create_labels, remove_stop_words)
                         if 'body' in extracted and len(extracted['body']):
                             email_metadata.append(extracted)
 
     return email_metadata
 
 
-def extract_metadata(file_name, token_type):
+def extract_metadata(file_name, token_type, create_labels, remove_stop_words):
     """
     Will extract metadata from an email.
 
@@ -75,13 +76,14 @@ def extract_metadata(file_name, token_type):
 
         if 'body' in metadata:
             metadata['original_body'] = metadata['body']
-            metadata['body'] = clean_text(metadata['body'], token_type)
-            metadata['label'] = create_label(metadata['body'])
+            metadata['body'] = clean_text(metadata['body'], token_type, remove_stop_words)
+            if create_labels:
+                metadata['label'] = create_label(metadata['body'])
 
         return metadata
 
 
-def clean_text(text_body, token_type):
+def clean_text(text_body, token_type, remove_stop_words):
 
     # Remove punctuation, quotation marks, etc.
     # From: https://towardsdatascience.com/sentiment-analysis-with-python-part-1-5ce197074184
@@ -91,12 +93,16 @@ def clean_text(text_body, token_type):
     text_body = replace_with_space.sub(" ", text_body)
     text_body = text_body.replace('\n', ' ')
 
+    if token_type == 'none':
+        return text_body
+
     # Tokenize the text by words or by sentences
     tokens = word_tokenize(text_body) if token_type == 'word' else sent_tokenize(text_body)
 
     # Remove stop words: a, the, is, etc.
-    # english_stop_words = stopwords.words('english')
-    # cleaned_tokens = [t for t in tokens if t not in english_stop_words]
+    if remove_stop_words:
+        english_stop_words = stopwords.words('english')
+        tokens = [t for t in tokens if t not in english_stop_words]
 
     return " ".join(tokens)
 
