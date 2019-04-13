@@ -1,4 +1,6 @@
 import nltk
+from Generator import text_processor
+import sys
 from nltk.tokenize import sent_tokenize,word_tokenize
 from nltk.corpus import stopwords
 from collections import defaultdict
@@ -59,7 +61,10 @@ class FrequencySummarizer:
     return nlargest(n, ranking, key=ranking.get)
 
 #main
-
+data_path = sys.argv[1]
+#data_path = passed in argument of where maldir is; word = return string, dont tokanize by sentences; False = dont create labels; True = dont remove stop words
+data = text_processor.process(data_path, 'word', False, False)
+print(stype(data[29]['body']))
 body = ["Im really interested to hear more about your role as a Manager at Google. If you have time in the coming weeks lets chat. Im generally free on Friday, if that works for you? Looking forward to keeping in touch!", "Hi Bob, It was nice to meet you at the job fair. I would love to learn more about management.", ]
 
 fs = FrequencySummarizer()
@@ -69,5 +74,6 @@ print '----------------------------------'
 print text
 for s in fs.summarize(text, 2):
     print '*',s
+print "stop."
 for s in fs.summarize(title, 2):
     print '*',s
