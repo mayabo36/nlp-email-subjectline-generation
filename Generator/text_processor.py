@@ -2,9 +2,15 @@ import os
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
 import re
+import email
+
+replace_no_space = re.compile('(\.)|(;)|(:)|(!)|(\')|(\?)|(,)|(\")|(\()|(\))|(\[)|(])|(>)|(<)')
+replace_with_space = re.compile('(-)|(/)')
+english_stop_words = stopwords.words('english')
+
 
 # Token types: sentence, word, or none
-# Create_labels and remove_stop_words are booleanss
+# Create_labels and remove_stop_words are booleans
 def process(data_path, token_type, create_labels, remove_stop_words):
     """
     Takes a data_path and assumes data is structured as:
@@ -29,7 +35,7 @@ def process(data_path, token_type, create_labels, remove_stop_words):
     email_metadata = []
     employees = os.listdir(data_path)
 
-    for e in employees[0:50]:
+    for e in employees[0:10]:
         folders = os.listdir(data_path + '/' + e)
         for f in folders:
             if f == 'sent_items':
@@ -83,28 +89,35 @@ def extract_metadata(file_name, token_type, create_labels, remove_stop_words):
         return metadata
 
 
+def cleanse(text):
+    return replace_with_space.sub(" ", replace_no_space.sub("", text)).replace('\n', ' ')
+
+
+def strip_stop_words(text, remove_stop_words):
+    if not remove_stop_words:
+        return text
+    return [t for t in text if t not in english_stop_words]
+
+
 def clean_text(text_body, token_type, remove_stop_words):
 
-    # Remove punctuation, quotation marks, etc.
-    # From: https://towardsdatascience.com/sentiment-analysis-with-python-part-1-5ce197074184
-    replace_no_space = re.compile('(\.)|(;)|(:)|(!)|(\')|(\?)|(,)|(\")|(\()|(\))|(\[)|(])|(>)|(<)')
-    replace_with_space = re.compile('(-)|(/)')
-    text_body = replace_no_space.sub("", text_body)
-    text_body = replace_with_space.sub(" ", text_body)
-    text_body = text_body.replace('\n', ' ')
+    def func(text):
+        return strip_stop_words(word_tokenize(cleanse(text)), remove_stop_words)
+    # Remove email signature?
 
-    if token_type == 'none':
-        return text_body
+    if token_type == "sentence":
+        return [' '.join(func(sentence)) for sentence in sent_tokenize(text_body)]
+        # return [' '.join(strip_stop_words(word_tokenize(cleanse(sentence)), remove_stop_words)) for sentence in sent_tokenize(text_body)]
 
-    # Tokenize the text by words or by sentences
-    tokens = word_tokenize(text_body) if token_type == 'word' else sent_tokenize(text_body)
+    elif token_type == 'word':
+        return func(text_body)
+        # return strip_stop_words(word_tokenize(cleanse(text_body)), remove_stop_words)
 
-    # Remove stop words: a, the, is, etc.
-    if remove_stop_words:
-        english_stop_words = stopwords.words('english')
-        tokens = [t for t in tokens if t not in english_stop_words]
+    elif token_type == 'none':
+        return ' '.join(func(text_body))
+        # return ' '.join(strip_stop_words(word_tokenize(cleanse(text_body)), remove_stop_words))
 
-    return " ".join(tokens)
+    return None
 
 
 def create_label(text_body):
