@@ -1,11 +1,17 @@
 import os
 from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import word_tokenize, sent_tokenize
 import re
-from datetime import datetime
+import email
+
+replace_no_space = re.compile('(\.)|(;)|(:)|(!)|(\')|(\?)|(,)|(\")|(\()|(\))|(\[)|(])|(>)|(<)')
+replace_with_space = re.compile('(-)|(/)')
+english_stop_words = stopwords.words('english')
 
 
-def process(data_path):
+# Token types: sentence, word, or none
+# Create_labels and remove_stop_words are booleans
+def process(data_path, token_type, create_labels, remove_stop_words):
     """
     Takes a data_path and assumes data is structured as:
 
@@ -29,7 +35,7 @@ def process(data_path):
     email_metadata = []
     employees = os.listdir(data_path)
 
-    for e in employees[0:50]:
+    for e in employees[0:10]:
         folders = os.listdir(data_path + '/' + e)
         for f in folders:
             if f == 'sent_items':
@@ -37,14 +43,14 @@ def process(data_path):
                 for email in emails:
                     email_location = data_path + '/' + e + '/' + f + '/' + email
                     if os.path.isfile(email_location):
-                        extracted = extract_metadata(email_location)
+                        extracted = extract_metadata(email_location, token_type, create_labels, remove_stop_words)
                         if 'body' in extracted and len(extracted['body']):
                             email_metadata.append(extracted)
 
     return email_metadata
 
 
-def extract_metadata(file_name):
+def extract_metadata(file_name, token_type, create_labels, remove_stop_words):
     """
     Will extract metadata from an email.
 
@@ -76,29 +82,42 @@ def extract_metadata(file_name):
 
         if 'body' in metadata:
             metadata['original_body'] = metadata['body']
-            metadata['body'] = clean_text(metadata['body'])
-            metadata['label'] = create_label(metadata['body'])
+            metadata['body'] = clean_text(metadata['body'], token_type, remove_stop_words)
+            if create_labels:
+                metadata['label'] = create_label(metadata['body'])
 
         return metadata
 
 
-def clean_text(text_body):
+def cleanse(text):
+    return replace_with_space.sub(" ", replace_no_space.sub("", text)).replace('\n', ' ')
 
-    # Remove punctuation, quotation marks, etc.
-    # From: https://towardsdatascience.com/sentiment-analysis-with-python-part-1-5ce197074184
-    replace_no_space = re.compile('(\.)|(;)|(:)|(!)|(\')|(\?)|(,)|(\")|(\()|(\))|(\[)|(])|(>)|(<)')
-    replace_with_space = re.compile('(-)|(/)')
-    text_body = replace_no_space.sub("", text_body)
-    text_body = replace_with_space.sub(" ", text_body)
 
-    # Tokenize the text
-    tokens = word_tokenize(text_body)
+def strip_stop_words(text, remove_stop_words):
+    if not remove_stop_words:
+        return text
+    return [t for t in text if t not in english_stop_words]
 
-    # Remove stop words: a, the, is, etc.
-    english_stop_words = stopwords.words('english')
-    cleaned_tokens = [t for t in tokens if t not in english_stop_words]
 
-    return " ".join(cleaned_tokens)
+def clean_text(text_body, token_type, remove_stop_words):
+
+    def func(text):
+        return strip_stop_words(word_tokenize(cleanse(text)), remove_stop_words)
+    # Remove email signature?
+
+    if token_type == "sentence":
+        return [' '.join(func(sentence)) for sentence in sent_tokenize(text_body)]
+        # return [' '.join(strip_stop_words(word_tokenize(cleanse(sentence)), remove_stop_words)) for sentence in sent_tokenize(text_body)]
+
+    elif token_type == 'word':
+        return func(text_body)
+        # return strip_stop_words(word_tokenize(cleanse(text_body)), remove_stop_words)
+
+    elif token_type == 'none':
+        return ' '.join(func(text_body))
+        # return ' '.join(strip_stop_words(word_tokenize(cleanse(text_body)), remove_stop_words))
+
+    return None
 
 
 def create_label(text_body):
