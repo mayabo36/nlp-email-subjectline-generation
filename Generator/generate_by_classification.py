@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import Evaluation.evaluator as evaluator
 import sys
+from Generator.ner import generate_by_ner
 
 subject_line_labels = [
     'Please see the attached',
@@ -19,10 +20,10 @@ subject_line_labels = [
     '<Entity> Proposal',
     'Out of office',
     'Thank You',
-    'Other/<Entity>']
+    'Other <Entity>']
 
 data_path = sys.argv[1]
-data = text_processor.process(data_path, 'none', True, True)
+data = text_processor.process(data_path, 'none', True, False)
 
 # These have been pre-processed and cleaned
 # Email bodies do not have stop words but subject lines do
@@ -49,6 +50,8 @@ for i in range(5):
     print("Email label:", subject_line_labels[email_labels[i]])
     print()
 
+print(len(email_ids))
+
 # Create the n-grams
 ngram_vectorizer = CountVectorizer(binary=True, ngram_range=(1, 2))
 ngram_vectorizer.fit(email_bodies)
@@ -67,13 +70,30 @@ print('Accuracy Score:', accuracy_score(y_val, knn.predict(X_val)))
 # Get the average evaluation score for the original subject lines
 baseline_score = evaluator.subject_line_evaluator(subject_lines)
 
+f = open("classification_results.txt", "w")
+
 # Get the average evaluation score for 25% of the data predicted subject lines
 predicted_subject_lines = []
-for index, email in enumerate(email_bodies):
+for i, email in enumerate(email_bodies):
     subject_prediction = subject_line_labels[knn.predict(ngram_vectorizer.transform([email]))[0]]
+    entities = generate_by_ner(email)
+    if 'Other' not in subject_prediction:
+        subject_prediction = subject_prediction.replace(
+            '<Entity>', generate_by_ner(email)[0] if len(entities) > 0 else ''
+        )
+    else:
+        subject_prediction = generate_by_ner(email)[0] if len(entities) > 0 else 'Other'
+    f.write('Email id: ' + email_ids[i])
+    f.write('Email body:' + email + '\n')
+    f.write('Subject line: ' + subject_prediction + '\n')
+    f.write('\n')
     predicted_subject_lines.append(subject_prediction)
+
 predicted_score = evaluator.subject_line_evaluator(predicted_subject_lines)
 
-print('Baseline (original subject line) score:', baseline_score)
-print('Predicted (generated subject line) score:', predicted_score)
-# 66.95886460230723 67.76563448694596
+
+f.write('Baseline (original subject line) score: ' + str(baseline_score) + '\n')
+f.write('Predicted (generated subject line) score: ' + str(predicted_score) + '\n')
+
+f.close()
+

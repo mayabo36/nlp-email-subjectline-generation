@@ -45,7 +45,7 @@ email_ids = []
 
 # Load the input emails and their original subject lines
 # NOTE: test replacing tab with no space later
-for email in sorted(data, key=lambda i: i['id']) :
+for email in sorted(data, key=lambda i: i['id']):
     if email['subject'] is not '':
         email_ids.append(email['id'])
         email_bodies.append(email['body'])
@@ -55,11 +55,8 @@ for email in sorted(data, key=lambda i: i['id']) :
 for i in range(5):
     print("Email ", email_ids[i])
     print(email_bodies[i])
-    print("Subject Line #", i + 1)
-    print(subject_lines[i])
+    print("Subject Line:", subject_lines[i])
     print()
-
-exit()
 
 def count_words(count_dict, text):
     '''Count the number of occurrences of each word in a set of text'''
