@@ -59,34 +59,38 @@ def extract_metadata(file_name, token_type, create_labels, remove_stop_words):
     """
     metadata = {'file': file_name}
 
-    with open(file_name, 'r') as file:
-        rows = file.readlines()
+    try:
+        with open(file_name, 'r') as file:
 
-        rules = [
-            ['Message-ID:', 'id'],
-            ['Subject:', 'subject'],
-        ]
+            rows = file.readlines()
 
-        for (index, row) in enumerate(rows):
-            row = row.lstrip('> \t')
-            for (pattern, prop) in rules:
-                if row.startswith(pattern):
-                    metadata[prop] = row.replace(pattern,'')
+            rules = [
+                ['Message-ID:', 'id'],
+                ['Subject:', 'subject'],
+            ]
 
-            if 'body' not in metadata:
-                if row.startswith('\n'):
-                    metadata['body'] = '\n'.join(rows[index:])
+            for (index, row) in enumerate(rows):
+                row = row.lstrip('> \t')
+                for (pattern, prop) in rules:
+                    if row.startswith(pattern):
+                        metadata[prop] = row.replace(pattern,'')
 
-            elif '-----Original Message-----' in row:
-                del metadata['body']
+                if 'body' not in metadata:
+                    if row.startswith('\n'):
+                        metadata['body'] = '\n'.join(rows[index:])
 
-        if 'body' in metadata:
-            metadata['original_body'] = metadata['body']
-            metadata['body'] = clean_text(metadata['body'], token_type, remove_stop_words)
-            if create_labels:
-                metadata['label'] = create_label(metadata['body'])
+                elif '-----Original Message-----' in row:
+                    del metadata['body']
 
-        return metadata
+            if 'body' in metadata:
+                metadata['original_body'] = metadata['body']
+                metadata['body'] = clean_text(metadata['body'], token_type, remove_stop_words)
+                if create_labels:
+                    metadata['label'] = create_label(metadata['body'])
+
+            return metadata
+    except Exception as e:
+        return metadata         
 
 
 def cleanse(text):
