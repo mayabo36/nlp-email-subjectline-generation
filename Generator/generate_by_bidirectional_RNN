@@ -33,26 +33,31 @@ DEBUG = True
 # ## Insepcting the Data
 
 data_path = sys.argv[1]
-data = process(data_path, 'none', False, True, False)
+data = process(data_path, 'none', False, True)
 
 # These have been pre-processed and cleaned
 # Email bodies do not have stop words but subject lines do
 email_bodies = []
 subject_lines = []
+email_ids = []
+
 # Load the input emails and their original subject lines
 # NOTE: test replacing tab with no space later
 for email in data:
     if email['subject'] is not '':
+        email_ids.append(email['id'])
         email_bodies.append(email['body'])
         subject_lines.append(email['subject'])
 
 # Inspecting some of the emails
 for i in range(5):
-    print("Email #", i + 1)
+    print("Email ", email_ids[i])
     print(email_bodies[i])
     print("Subject Line #", i + 1)
     print(subject_lines[i])
     print()
+
+exit()
 
 def count_words(count_dict, text):
     '''Count the number of occurrences of each word in a set of text'''
