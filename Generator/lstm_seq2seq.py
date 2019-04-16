@@ -50,20 +50,26 @@ import sys
 
 # CODE FROM: https://hackernoon.com/text-summarization-using-keras-models-366b002408d9
 
+DEBUG = True
+
 """
-batch_size = 64
-epochs = 110
+batch_size = 64/32
+epochs = 110/30
 latent_dim = 256
 num_samples = 10000
 """
 
-batch_size = 64  # Batch size for training.
-epochs = 30  # Number of epochs to train for.
+batch_size = 32  # Batch size for training.
+epochs = 3  # Number of epochs to train for.
 latent_dim = 256  # Latent dimensionality of the encoding space.
-num_samples = 10000  # Number of samples to train on.
+num_samples = 200  # Number of samples to train on.
 # Path to the data txt file on disk.
 
 data_path = sys.argv[1]
+
+if DEBUG:
+    print('Processing email dataset...')
+
 
 # Process the email dataset to clean, tokenize, and remove stop words (overly common words) from the email body
 data = text_processor.process(data_path, 'none', False, True, True)
@@ -72,6 +78,9 @@ authors = list(data)
 total_authors = len(authors)
 total_emails = sum([len(data[x]) for x in authors])
 
+if DEBUG:
+    print('Processed', total_authors, 'email authors and', total_emails, 'emails')
+
 # Vectorize the data.
 input_texts = []
 target_texts = []
@@ -79,7 +88,7 @@ input_characters = set()
 target_characters = set()
 # Load the input emails and their original subject lines
 # NOTE: test replacing tab with no space later
-for author in authors[0:1]:
+for author in authors:
     for email in data[author]:
         if email['subject'] is not '':
             input_text = email['body']

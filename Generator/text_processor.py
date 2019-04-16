@@ -35,7 +35,7 @@ def process(data_path, token_type, create_labels, remove_stop_words, by_author=F
     email_metadata = []
     employees = os.listdir(data_path)
 
-    for e in employees[0:1]:
+    for e in employees:
         folders = os.listdir(data_path + '/' + e)
         for f in folders:
             if f == 'sent_items':
