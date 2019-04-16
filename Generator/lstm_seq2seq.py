@@ -1,50 +1,69 @@
-from Generator import text_processor
-import sys
-from collections import Counter, defaultdict
-from nltk import bigrams, trigrams
-import random
-from Generator import ner
-import numpy as np
+'''Sequence to sequence example in Keras (character-level).
+This script demonstrates how to implement a basic character-level
+sequence-to-sequence model. We apply it to translating
+short English sentences into short French sentences,
+character-by-character. Note that it is fairly unusual to
+do character-level machine translation, as word-level
+models are more common in this domain.
+# Summary of the algorithm
+- We start with input sequences from a domain (e.g. English sentences)
+    and corresponding target sequences from another domain
+    (e.g. French sentences).
+- An encoder LSTM turns input sequences to 2 state vectors
+    (we keep the last LSTM state and discard the outputs).
+- A decoder LSTM is trained to turn the target sequences into
+    the same sequence but offset by one timestep in the future,
+    a training process called "teacher forcing" in this context.
+    Is uses as initial state the state vectors from the encoder.
+    Effectively, the decoder learns to generate `targets[t+1...]`
+    given `targets[...t]`, conditioned on the input sequence.
+- In inference mode, when we want to decode unknown input sequences, we:
+    - Encode the input sequence into state vectors
+    - Start with a target sequence of size 1
+        (just the start-of-sequence character)
+    - Feed the state vectors and 1-char target sequence
+        to the decoder to produce predictions for the next character
+    - Sample the next character using these predictions
+        (we simply use argmax).
+    - Append the sampled character to the target sequence
+    - Repeat until we generate the end-of-sequence character or we
+        hit the character limit.
+# Data download
+English to French sentence pairs.
+http://www.manythings.org/anki/fra-eng.zip
+Lots of neat sentence pairs datasets can be found at:
+http://www.manythings.org/anki/
+# References
+- Sequence to Sequence Learning with Neural Networks
+    https://arxiv.org/abs/1409.3215
+- Learning Phrase Representations using
+    RNN Encoder-Decoder for Statistical Machine Translation
+    https://arxiv.org/abs/1406.1078
+'''
+from __future__ import print_function
+
 from keras.models import Model
 from keras.layers import Input, LSTM, Dense
+import numpy as np
+from Generator import text_processor
+import sys
 
+# CODE FROM: https://hackernoon.com/text-summarization-using-keras-models-366b002408d9
 
-# Requires: python 3.6, nltk, keras, numpy
+"""
+batch_size = 64
+epochs = 110
+latent_dim = 256
+num_samples = 10000
+"""
 
-# Generic function to define an encoder-decoder RNN
-def define_models(n_input, n_output, n_units):
-    # define training encoder
-    encoder_inputs = Input(shape=(None, n_input))
-    encoder = LSTM(n_units, return_state=True)
-    encoder_outputs, state_h, state_c = encoder(encoder_inputs)
-    encoder_states = [state_h, state_c]
-    # define training decoder
-    decoder_inputs = Input(shape=(None, n_output))
-    decoder_lstm = LSTM(n_units, return_sequences=True, return_state=True)
-    decoder_outputs, _, _ = decoder_lstm(decoder_inputs, initial_state=encoder_states)
-    decoder_dense = Dense(n_output, activation='softmax')
-    decoder_outputs = decoder_dense(decoder_outputs)
-    model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
-    # define inference encoder
-    encoder_model = Model(encoder_inputs, encoder_states)
-    # define inference decoder
-    decoder_state_input_h = Input(shape=(n_units,))
-    decoder_state_input_c = Input(shape=(n_units,))
-    decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
-    decoder_outputs, state_h, state_c = decoder_lstm(decoder_inputs, initial_state=decoder_states_inputs)
-    decoder_states = [state_h, state_c]
-    decoder_outputs = decoder_dense(decoder_outputs)
-    decoder_model = Model([decoder_inputs] + decoder_states_inputs, [decoder_outputs] + decoder_states)
-    # return all models
-    return model, encoder_model, decoder_model
-
-
-DEBUG = True
+batch_size = 64  # Batch size for training.
+epochs = 30  # Number of epochs to train for.
+latent_dim = 256  # Latent dimensionality of the encoding space.
+num_samples = 10000  # Number of samples to train on.
+# Path to the data txt file on disk.
 
 data_path = sys.argv[1]
-
-if DEBUG:
-    print('Processing email dataset...')
 
 # Process the email dataset to clean, tokenize, and remove stop words (overly common words) from the email body
 data = text_processor.process(data_path, 'none', False, True, True)
@@ -53,24 +72,11 @@ authors = list(data)
 total_authors = len(authors)
 total_emails = sum([len(data[x]) for x in authors])
 
-if DEBUG:
-    print('Processed', total_authors, 'email authors and', total_emails, 'emails')
-    for author in authors:
-        for email in data[author][0:5]:
-            print(email)
-
-# Define hyperparameters
-batch_size = 64
-epochs = 110
-latent_dim = 256
-num_samples = 10000
-
-# Vectorize the data
+# Vectorize the data.
 input_texts = []
 target_texts = []
 input_characters = set()
 target_characters = set()
-
 # Load the input emails and their original subject lines
 # NOTE: test replacing tab with no space later
 for author in authors[0:1]:
@@ -92,19 +98,26 @@ num_decoder_tokens = len(target_characters)
 max_encoder_seq_length = max([len(txt) for txt in input_texts])
 max_decoder_seq_length = max([len(txt) for txt in target_texts])
 
-if DEBUG:
-    print('Number of samples:', len(input_texts))
-    print('Number of unique input tokens:', num_encoder_tokens)
-    print('Number of unique output tokens:', num_decoder_tokens)
-    print('Max sequence length for inputs:', max_encoder_seq_length)
-    print('Max sequence length for outputs:', max_decoder_seq_length)
+print('Number of samples:', len(input_texts))
+print('Number of unique input tokens:', num_encoder_tokens)
+print('Number of unique output tokens:', num_decoder_tokens)
+print('Max sequence length for inputs:', max_encoder_seq_length)
+print('Max sequence length for outputs:', max_decoder_seq_length)
 
-input_token_index = dict([(char, i) for i, char in enumerate(input_characters)])
-target_token_index = dict([(char, i) for i, char in enumerate(target_characters)])
+input_token_index = dict(
+    [(char, i) for i, char in enumerate(input_characters)])
+target_token_index = dict(
+    [(char, i) for i, char in enumerate(target_characters)])
 
-encoder_input_data = np.zeros((len(input_texts), max_encoder_seq_length, num_encoder_tokens), dtype='float32')
-decoder_input_data = np.zeros((len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype='float32')
-decoder_target_data = np.zeros((len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype='float32')
+encoder_input_data = np.zeros(
+    (len(input_texts), max_encoder_seq_length, num_encoder_tokens),
+    dtype='float32')
+decoder_input_data = np.zeros(
+    (len(input_texts), max_decoder_seq_length, num_decoder_tokens),
+    dtype='float32')
+decoder_target_data = np.zeros(
+    (len(input_texts), max_decoder_seq_length, num_decoder_tokens),
+    dtype='float32')
 
 for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
     for t, char in enumerate(input_text):
@@ -135,12 +148,15 @@ decoder_outputs, _, _ = decoder_lstm(decoder_inputs,
 decoder_dense = Dense(num_decoder_tokens, activation='softmax')
 decoder_outputs = decoder_dense(decoder_outputs)
 
-# Model that will turn encoded input data and decoded input data into decoded target data
+# Define the model that will turn
+# `encoder_input_data` & `decoder_input_data` into `decoder_target_data`
 model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
 # Run training
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy')
-model.fit([encoder_input_data, decoder_input_data], decoder_target_data, batch_size=batch_size, epochs=epochs,
+model.fit([encoder_input_data, decoder_input_data], decoder_target_data,
+          batch_size=batch_size,
+          epochs=epochs,
           validation_split=0.2)
 
 # Save model
@@ -202,7 +218,7 @@ def decode_sequence(input_seq):
         # Exit condition: either hit max length
         # or find stop character.
         if (sampled_char == '\n' or
-                len(decoded_sentence) > max_decoder_seq_length):
+           len(decoded_sentence) > max_decoder_seq_length):
             stop_condition = True
 
         # Update the target sequence (of length 1).
@@ -223,91 +239,3 @@ for seq_index in range(100):
     print('-')
     print('Input sentence:', input_texts[seq_index])
     print('Decoded sentence:', decoded_sentence)
-
-
-# generate target given source sequence
-def predict_sequence(infenc, infdec, source, n_steps, cardinality):
-    # encode
-    state = infenc.predict(source)
-    # start of sequence input
-    target_seq = np.array([0.0 for _ in range(cardinality)]).reshape(1, 1, cardinality)
-    # collect predictions
-    output = list()
-    for t in range(n_steps):
-        # predict next char
-        yhat, h, c = infdec.predict([target_seq] + state)
-        # store prediction
-        output.append(yhat[0, 0, :])
-        # update state
-        state = [h, c]
-        # update target sequence
-        target_seq = yhat
-    return np.array(output)
-
-
-exit()
-
-for author in authors[0:1]:
-    print(author)
-
-    model = defaultdict(lambda: defaultdict(lambda: 0))
-
-    for email in data[author]:
-        for sentence in email['body']:
-            for w1, w2, w3 in trigrams(sentence.split(' '), pad_right=True, pad_left=True):
-                model[(w1, w2)][w3] += 1
-
-    for w1_w2 in model:
-        total_count = float(sum(model[w1_w2].values()))
-        for w3 in model[w1_w2]:
-            model[w1_w2][w3] /= total_count
-
-    for email in data[author][0:5]:
-
-        print('\n\n', email['body'])
-
-        # Get top entity for this email
-        entities = ner.generate_by_ner(' '.join(email['body']))
-
-        entities = []
-
-        if not len(entities):
-            text = [None, None]
-        else:
-            text = [None, entities.pop()]
-        prob = 1.0  # <- Init probability
-
-        sentence_finished = False
-        attempts = 0
-
-        while not sentence_finished:
-            attempts += 1
-
-            if attempts >= 20:
-                print(text, "no workie")
-                if not len(entities):
-                    print("bad email >:(, forfeit")
-                    break
-                text = [None, entities.pop()]
-
-            r = random.random()
-            accumulator = .0
-            print(text)
-
-            for word in model[tuple(text[-2:])].keys():
-                accumulator += model[tuple(text[-2:])][word]
-
-                if accumulator >= r:
-                    prob *= model[tuple(text[-2:])][
-                        word]  # <- Update the probability with the conditional probability of the new word
-                    text.append(word)
-                    break
-
-            if len(text) > 6:
-                if prob < 0.001:
-                    text.pop()
-                else:
-                    sentence_finished = True
-
-        print("Probability of text=", prob)  # <- Print the probability of the text
-        print(' '.join([t for t in text if t]))

@@ -5,7 +5,7 @@ import re
 import email
 
 replace_no_space = re.compile('(\.)|(;)|(:)|(!)|(\')|(\?)|(,)|(\")|(\()|(\))|(\[)|(])|(>)|(<)')
-replace_with_space = re.compile('(-)|(/)')
+replace_with_space = re.compile('(-)|(\t)')
 english_stop_words = stopwords.words('english')
 
 
@@ -45,7 +45,7 @@ def process(data_path, token_type, create_labels, remove_stop_words, by_author=F
                     if os.path.isfile(email_location):
                         extracted = extract_metadata(email_location, token_type, create_labels, remove_stop_words)
                         extracted['author'] = e
-                        if 'body' in extracted and len(extracted['body']):
+                        if 'body' in extracted and len(extracted['body']) and not extracted['subject'].lower().startswith('re ') and not extracted['subject'].lower() == 're' and not extracted['subject'].lower().startswith('fw'):
                             email_metadata.append(extracted)
 
     if by_author:
@@ -93,6 +93,8 @@ def extract_metadata(file_name, token_type, create_labels, remove_stop_words):
         if 'body' in metadata:
             metadata['original_body'] = metadata['body']
             metadata['body'] = clean_text(metadata['body'], token_type, remove_stop_words)
+            clean_subject = cleanse(metadata['subject'])
+            metadata['subject'] = '' if clean_subject.count(' ') == len(clean_subject) else clean_subject
             if create_labels:
                 metadata['label'] = create_label(metadata['body'])
 
@@ -100,7 +102,7 @@ def extract_metadata(file_name, token_type, create_labels, remove_stop_words):
 
 
 def cleanse(text):
-    return replace_with_space.sub(" ", replace_no_space.sub("", text)).replace('\n', ' ')
+    return replace_with_space.sub(" ", replace_no_space.sub("", text)).replace('\n', ' ').strip(' \t\n\r')
 
 
 def strip_stop_words(text, remove_stop_words):
