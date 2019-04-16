@@ -19,8 +19,10 @@
 
 import numpy as np
 import tensorflow as tf
+import operator
 import re
 from nltk.corpus import stopwords
+from collections import OrderedDict
 import time
 from tensorflow.python.layers.core import Dense
 from tensorflow.python.ops.rnn_cell_impl import _zero_state_tensors
@@ -43,7 +45,7 @@ email_ids = []
 
 # Load the input emails and their original subject lines
 # NOTE: test replacing tab with no space later
-for email in data:
+for email in sorted(data, key=lambda i: i['id']) :
     if email['subject'] is not '':
         email_ids.append(email['id'])
         email_bodies.append(email['body'])

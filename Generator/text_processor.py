@@ -91,12 +91,12 @@ def extract_metadata(file_name, token_type, create_labels, remove_stop_words):
                 del metadata['body']
 
         if 'body' in metadata:
+            if create_labels:
+                metadata['label'] = create_label(metadata['body'])
             metadata['original_body'] = metadata['body']
             metadata['body'] = clean_text(metadata['body'], token_type, remove_stop_words)
             clean_subject = cleanse(metadata['subject'])
             metadata['subject'] = '' if clean_subject.count(' ') == len(clean_subject) else clean_subject
-            if create_labels:
-                metadata['label'] = create_label(metadata['body'])
 
         return metadata
 
