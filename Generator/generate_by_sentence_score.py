@@ -1,25 +1,17 @@
 import heapq
-import re
 import nltk
+import sys
+from Generator import text_processor
 nltk.download('stopwords')
 
-def sentence_score(article_text):
-    # Removing square brackets and extra spaces
-    article_text = re.sub(r'\[[0-9]*\]', ' ', article_text)
-    article_text = re.sub(r'\s+', ' ', article_text)
+def generate_by_sentence_score(sentence_list):
+    full_body = ' '.join(sentence_list)
 
-    # Removing special characters and digits
-    formatted_article_text = re.sub('[^a-zA-Z]', ' ', article_text )
-    formatted_article_text = re.sub(r'\s+', ' ', formatted_article_text)
-
-    # Converting text to sentences using sentence tokenization.
-    sentence_list = nltk.sent_tokenize(article_text)
-
-    # Find weighted frequency of occurence
+    # Find weighted frequency of occurrence
     stopwords = nltk.corpus.stopwords.words('english')
 
     word_frequencies = {}
-    for word in nltk.word_tokenize(formatted_article_text):
+    for word in full_body.split(' '):
         if word not in stopwords:
             if word not in word_frequencies.keys():
                 word_frequencies[word] = 1
@@ -42,10 +34,7 @@ def sentence_score(article_text):
                         sentence_scores[sent] += word_frequencies[word]
 
     summary_sentences = heapq.nlargest(1, sentence_scores, key=sentence_scores.get)
-
     summary = ' '.join(summary_sentences)
-
-    shorter_summary = ''
 
     # Truncate sentence
     sentence_summary = len(summary)
@@ -56,6 +45,19 @@ def sentence_score(article_text):
         while summary[35 + i] != ' ':
             shorter_summary = shorter_summary + summary[35 + i]
             i += 1
+        shorter_summary = shorter_summary + '...'
+    else:
+        shorter_summary = summary
+    return shorter_summary
 
-    shorter_summary = shorter_summary + '...'
-    print(shorter_summary)
+
+# Testing Rebeca's code
+data_path = sys.argv[1]
+email_text = ""
+final_summary = ""
+email_text = text_processor.process(data_path, "sentence", False, False)
+
+for j in range(0, 10):
+    text = email_text[j]['body']
+    final_summary = generate_by_sentence_score(text)
+    print(final_summary)
