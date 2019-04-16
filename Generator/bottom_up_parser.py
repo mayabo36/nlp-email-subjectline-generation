@@ -1,4 +1,6 @@
 import nltk
+import text_processor
+import sys
 from nltk.tokenize import sent_tokenize,word_tokenize
 from nltk.corpus import stopwords
 from collections import defaultdict
@@ -31,7 +33,7 @@ class FrequencySummarizer:
           freq[word] += 1
     # frequencies normalization and fitering
     m = float(max(freq.values()))
-    for w in freq.keys():
+    for w in freq.items():#.keys():
       freq[w] = freq[w]/m
       if freq[w] >= self._max_cut or freq[w] <= self._min_cut:
         del freq[w]
@@ -43,7 +45,7 @@ class FrequencySummarizer:
       which represent the summary of text.
     """
     sents = sent_tokenize(text)
-    assert n <= len(sents)
+    #assert n <= len(sents)
     word_sent = [word_tokenize(s.lower()) for s in sents]
     self._freq = self._compute_frequencies(word_sent)
     ranking = defaultdict(int)
@@ -59,15 +61,39 @@ class FrequencySummarizer:
     return nlargest(n, ranking, key=ranking.get)
 
 #main
+data_path = sys.argv[1]
+data = text_processor.process(data_path, 'none', False, True)
 
-body = ["Im really interested to hear more about your role as a Manager at Google. If you have time in the coming weeks lets chat. Im generally free on Friday, if that works for you? Looking forward to keeping in touch!", "Hi Bob, It was nice to meet you at the job fair. I would love to learn more about management.", ]
-
-fs = FrequencySummarizer()
-#for article_url in to_summarize[:5]:
-title, text = body
-print '----------------------------------'
-print text
-for s in fs.summarize(text, 2):
-    print '*',s
-for s in fs.summarize(title, 2):
-    print '*',s
+# These have been pre-processed and cleaned
+# Email bodies do not have stop words but subject lines do
+email_bodies = []
+subject_lines = []
+# Load the input emails and their original subject lines
+# NOTE: test replacing tab with no space later
+for email in data:
+    if email['subject'] is not '':
+        email_bodies.append(email['body'])
+        subject_lines.append(email['subject'])
+        
+# Inspecting some of the emails
+for i in range(5):
+    print("Email #", i + 1)
+    print(email_bodies[i])
+    print("Subject Line #", i + 1)
+    print(subject_lines[i])
+    print()
+exit()
+#sentences = ['mailtoIMCEANOTES +22Lafontaine+2C+20Steve+22+20+3Csteve+2Elafontaine+40ban kofamerica+2Ecom+3E+40ENRON @ ENRONcom Sent Thursday August 16 2001 402 PM To jarnold @ enroncom Subject rumours new rumour youre skillings replacement thats even better aga ********************************************************************** This e mail property Enron Corp relevant affiliate may contain confidential privileged material sole use intended recipient', 'Any review use distribution disclosure others strictly prohibited', 'If intended recipient authorized receive recipient please contact sender reply Enron Corp enronmessagingadministration @ enroncom delete copies message', 'This e mail attachments hereto intended offer acceptance create evidence binding enforceable contract Enron Corp affiliates intended recipient party may relied anyone basis contract estoppel otherwise', 'Thank', '**********************************************************************']
+#for i, sentence in enumerate(sentences[0: -1]):
+#  body = [sentences[i], sentences[i+1]]
+#  fs = FrequencySummarizer()
+#  #for article_url in to_summarize[:5]:
+#  title, text = body
+#  print('----------------------------------')
+#  #print(text)
+#  for s in fs.summarize(text, 2):
+#    print('*',s)
+#  print("stop.")
+  #for s in fs.summarize(title, 2):
+  #  print('*',s)
+  
