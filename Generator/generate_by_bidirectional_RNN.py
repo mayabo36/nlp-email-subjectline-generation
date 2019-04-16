@@ -75,12 +75,10 @@ count_words(word_counts, email_bodies)
 
 print("Size of Vocabulary:", len(word_counts))
 
-exit()
-
 # Load Conceptnet Numberbatch's (CN) embeddings, similar to GloVe, but probably better
 # (https://github.com/commonsense/conceptnet-numberbatch)
 embeddings_index = {}
-with open('/Users/Dave/Desktop/Programming/numberbatch-en-17.02.txt', encoding='utf-8') as f:
+with open('C:\\Users\\rebeca\\Desktop\\Spring 2019\\CAP 6640 Computer Understanding of Natural Language\\TermProject\\nlp-email-subjectline-generation\\numberbatch-en-17.06.txt', encoding='utf-8') as f:
     for line in f:
         values = line.split(' ')
         word = values[0]
@@ -88,8 +86,6 @@ with open('/Users/Dave/Desktop/Programming/numberbatch-en-17.02.txt', encoding='
         embeddings_index[word] = embedding
 
 print('Word embeddings:', len(embeddings_index))
-
-# In[210]:
 
 # Find the number of words that are missing from CN, and are used more than our threshold.
 missing_words = 0
@@ -104,6 +100,9 @@ missing_ratio = round(missing_words / len(word_counts), 4) * 100
 
 print("Number of words missing from CN:", missing_words)
 print("Percent of words that are missing from vocabulary: {}%".format(missing_ratio))
+
+exit()
+
 
 # I use a threshold of 20, so that words not in CN can be added to our word_embedding_matrix, but they need to be common enough in the reviews so that the model can understand their meaning.
 
