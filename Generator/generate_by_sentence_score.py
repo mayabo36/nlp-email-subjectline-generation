@@ -1,7 +1,9 @@
 import heapq
 import nltk
 import sys
+import re
 from Generator import text_processor
+import Evaluation.evaluator as evaluator
 nltk.download('stopwords')
 
 def generate_by_sentence_score(sentence_list):
@@ -35,29 +37,52 @@ def generate_by_sentence_score(sentence_list):
 
     summary_sentences = heapq.nlargest(1, sentence_scores, key=sentence_scores.get)
     summary = ' '.join(summary_sentences)
+    summary = "%s%s" % (summary[:1].upper(), summary[1:])
+
+    # Strip the sentence of special characters
+    summary = re.sub(r"[^a-zA-Z0-9]+", ' ', summary)
 
     # Truncate sentence
-    sentence_summary = len(summary)
+    character_count = 40
 
-    if sentence_summary > 35:
-        shorter_summary = summary[0:35]
-        i = 0
-        while summary[35 + i] != ' ':
-            shorter_summary = shorter_summary + summary[35 + i]
-            i += 1
-        shorter_summary = shorter_summary + '...'
+    shorter_summary = ''
+    if len(summary) > 40:
+        for char in summary:
+            if summary[character_count] is ' ':
+                shorter_summary = summary[0:character_count]
+                shorter_summary = shorter_summary + '...'
+                break
+            character_count = character_count - 1
     else:
         shorter_summary = summary
     return shorter_summary
 
-
 # Testing Rebeca's code
+f = open("sentence_score_results.txt", "w")
 data_path = sys.argv[1]
 email_text = ""
 final_summary = ""
 email_text = text_processor.process(data_path, "sentence", False, False)
 
-for j in range(0, 10):
-    text = email_text[j]['body']
-    final_summary = generate_by_sentence_score(text)
-    print(final_summary)
+email_bodies = []
+subject_lines = []
+email_ids = []
+predicted_subject_lines = []
+
+# Load the input emails and their original subject lines
+# NOTE: test replacing tab with no space later
+for email in sorted(email_text, key=lambda i: i['id']):
+    if email['subject'] is not '':
+        email_ids.append(email['id'])
+        email_bodies.append(email['body'])
+        subject_lines.append(email['subject'])
+
+for i, email in enumerate(email_bodies):
+    f.write("Email id: " + email_ids[i])
+    f.write("Email body: " + ' '.join(email_bodies[i]) + '\n')
+    final_summary = generate_by_sentence_score(email_bodies[i])
+    f.write("Subject Line: " + final_summary + '\n\n')
+    predicted_subject_lines.append(final_summary)
+
+predicted_score = evaluator.subject_line_evaluator(predicted_subject_lines)
+f.write("Predicted (generated subject line) score: " + str(predicted_score))
