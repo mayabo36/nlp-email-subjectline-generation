@@ -11,7 +11,7 @@ english_stop_words = stopwords.words('english')
 
 # Token types: sentence, word, or none
 # Create_labels and remove_stop_words are booleans
-def process(data_path, token_type, create_labels, remove_stop_words, by_author=False):
+def process(data_path, token_type, create_labels, remove_stop_words, by_author=False, n=None):
     """
     Takes a data_path and assumes data is structured as:
 
@@ -35,7 +35,7 @@ def process(data_path, token_type, create_labels, remove_stop_words, by_author=F
     email_metadata = []
     employees = os.listdir(data_path)
 
-    for e in employees[0:2]:
+    for e in employees[0:n]:
         folders = os.listdir(data_path + '/' + e)
         for f in folders:
             if f == 'sent_items':
@@ -102,7 +102,11 @@ def extract_metadata(file_name, token_type, create_labels, remove_stop_words):
 
 
 def cleanse(text):
-    return replace_with_space.sub(" ", replace_no_space.sub("", text)).replace('\n', ' ').strip(' \t\n\r')
+    cleansed_text = replace_with_space.sub(" ", replace_no_space.sub("", text)).replace('\n', ' ').strip(' \t\n\r')
+    cleansed_text = cleansed_text.split('******************************************************', 1)[0]
+    cleansed_text = cleansed_text.split(' _____________________________________________________', 1)[0]
+    cleansed_text = cleansed_text.split('Original Message', 1)[0]
+    return cleansed_text
 
 
 def strip_stop_words(text, remove_stop_words):
