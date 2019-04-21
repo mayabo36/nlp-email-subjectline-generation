@@ -3,25 +3,21 @@ from keras.layers import Embedding, LSTM, Dense, Dropout
 from keras.preprocessing.text import Tokenizer
 from keras.callbacks import EarlyStopping
 from keras.models import Sequential
-from Generator import text_processor, ner
-from Evaluation import evaluator
 import keras.utils as ku
 import numpy as np
-import sys
+from Generator import ner, text_processor
+from Evaluation import evaluator
 import random
+import sys
 
-# https://medium.com/@shivambansal36/language-modelling-text-generation-using-lstms-deep-learning-for-nlp-ed36b224b275
+# https://medium.com/@shivambansal36/language-modelling-text-generation-using-lst
 
 tokenizer = Tokenizer()
 
 
 def dataset_preparation(data):
-
-    corpus = []
-
-    for email in data:
-        for line in email:
-            corpus.append(line.lower())
+    # basic cleanup
+    corpus = data.lower().split("\n")
 
     # tokenization
     tokenizer.fit_on_texts(corpus)
@@ -56,7 +52,7 @@ def create_model(predictors, label, max_sequence_len, total_words):
 
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     earlystop = EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=0, mode='auto')
-    model.fit(predictors, label, epochs=10, verbose=1, callbacks=[earlystop])
+    model.fit(predictors, label, epochs=5, verbose=1, callbacks=[earlystop])
     print(model.summary())
     return model
 
@@ -76,19 +72,20 @@ def generate_text(seed_text, next_words, max_sequence_len):
     return seed_text
 
 
-data_path = sys.argv[1]
-data = text_processor.process(data_path, 'sentence', False, False, False, 10)
-input = []
-for email in data:
-    if email['subject'] is not '':
-        input.append(email['body'])
+data = open('C:\\Users\\rebeca\\Desktop\\Spring 2019\\CAP 6640 Computer Understanding of Natural Language\\TermProject\\nlp-email-subjectline-generation\\Generator\\email_bodies.txt').read()
 
-predictors, label, max_sequence_len, total_words = dataset_preparation(input)
 
+predictors, label, max_sequence_len, total_words = dataset_preparation(data)
 model = create_model(predictors, label, max_sequence_len, total_words)
 
-model.save('C:\\Users\\rebeca\\Desktop\\Spring 2019\\CAP 6640 Computer Understanding of Natural Language\\TermProject\\nlp-email-subjectline-generation\\rnn-lm-2.h5')
+model.save('C:\\Users\\rebeca\\Desktop\\Spring 2019\\CAP 6640 Computer Understanding of Natural Language\\TermProject\\nlp-email-subjectline-generation\\rnn-lm-testing.h5')
 
+#model = load_model('C:\\Users\\rebeca\\Desktop\\Spring 2019\\CAP 6640 Computer Understanding of Natural Language\\TermProject\\nlp-email-subjectline-generation\\rnn-lm-2.h5')
+
+
+print(generate_text("california", 3, max_sequence_len))
+
+data_path = sys.argv[1]
 test_data = text_processor.process(data_path, 'none', False, False, False, 2)
 
 email_ids = []
@@ -99,7 +96,10 @@ for email in sorted(test_data, key=lambda i:i['id']):
         email_ids.append(email['id'])
         email_bodies.append(email['body'])
 
-f = open("rnn_lm_results.txt", "w")
+debug = False
+
+if not debug:
+    f = open("rnn_lm_results.txt", "w")
 
 generated_subject_lines = []
 
@@ -107,18 +107,33 @@ for i, email in enumerate(email_bodies):
     entities = ner.generate_by_ner(email)
     subject_line = ""
     if len(entities) > 0:
-        subject_line = generate_text(entities[0], 4, max_sequence_len)
+        entity = random.choice(entities)
+        index = email.split().index(entity.split()[-1])+1
+        text_seed = entity + ' ' + ' '.join(email.split()[index:index+1])
+        subject_line = generate_text(text_seed, 3, max_sequence_len)
     else:
-        subject_line = generate_text(random.choice(email.split()), 4, max_sequence_len)
+        word = random.choice(email.split())
+        index = email.split().index(word.split()[-1])+1
+        text_seed = word + ' ' + ' '.join(email.split()[index:index+1])
+        subject_line = generate_text(text_seed, 3, max_sequence_len)
 
     generated_subject_lines.append(subject_line)
 
-    f.write('Email id: ' + email_ids[i])
-    f.write('Email body:' + email + '\n')
-    f.write('Subject line: ' + subject_line + '\n')
+    if debug:
+        print('Email id: ' + email_ids[i])
+        print('Email body:' + email + '\n')
+        print('Subject line: ' + subject_line + '\n')
+        print('\n')
+    else:
+        f.write('Email id: ' + email_ids[i])
+        f.write('Email body:' + email + '\n')
+        f.write('Subject line: ' + str(subject_line) + '\n')
+        f.write('\n')
 
 predicted_score = evaluator.subject_line_evaluator(generated_subject_lines)
 
-f.write('Predicted (generated subject line) score: ' + str(predicted_score) + '\n')
-
-f.close()
+if debug:
+    print('Predicted (generated subject line) score: ' + str(predicted_score) + '\n')
+else:
+    f.write('Predicted (generated subject line) score: ' + str(predicted_score) + '\n')
+    f.close()
