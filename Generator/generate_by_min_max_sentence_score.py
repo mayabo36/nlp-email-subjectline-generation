@@ -95,7 +95,7 @@ print("EMAIL ID's: ", len(email_ids))
 
 # Inspecting some of the emails
 
-f = open("bottom_up_results.txt", "w+")
+f = open("generated_min_max_results.txt", "w+")
 predicted_subject_lines = []
 for i in range(300):
   #write to the file
