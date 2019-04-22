@@ -10,7 +10,12 @@ from Evaluation import evaluator
 import random
 import sys
 
-# https://medium.com/@shivambansal36/language-modelling-text-generation-using-lst
+# ********************************************************************
+# Title: Language Modelling and Text Generation using LSTMs — Deep Learning for NLP
+# Name: Shivam Bansal
+# Date: 2018
+# Availability: https://medium.com/@shivambansal36/language-modelling-text-generation-using-lstms-deep-learning-for-nlp-ed36b224b275
+# ********************************************************************
 
 tokenizer = Tokenizer()
 
