@@ -2,7 +2,7 @@
 This Evaluator will take an array of subject lines (input) and take the average of all the emails
 '''
 
-
+from __future__ import division
 # Keeps the average score of all subject lines
 
 def evaluator(subject_line):
@@ -28,7 +28,7 @@ def evaluator(subject_line):
         # print("contained 4 words or less")
 
     # Mobile Subject Line is over 35 characters (-10 points)
-    if len(subject_line) > 35:
+    if len(subject_line) > 40:
         score -= 10
         # print("subject line contained over 35 characters")
 
@@ -66,6 +66,7 @@ def subject_line_evaluator(lines, avg=0):
     for eachLine in lines:
         # Evaluator:
         avg = avg + evaluator(eachLine)
+    print len(lines)
     return avg / len(lines)
 
 
